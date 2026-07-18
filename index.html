@@ -382,6 +382,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
         <button class="btn-full btn-verde" style="margin-top:12px;" onclick="guardarConfigTurnos()">💾 Guardar configuración</button>
       </div>
 
+      <!-- Gestionar sitios -->
+      <div class="admin-card">
+        <h3>📍 Gestionar sitios</h3>
+        <p style="font-size:12px;color:var(--txt2);margin-bottom:10px;line-height:1.5;">
+          Crea aquí los sitios de vigilancia ambiental. Una vez creados, aparecerán como lista para elegir al asignar un sitio a cada estudiante (sin escribirlos a mano, para que todos queden homogéneos).
+        </p>
+        <div class="form-row">
+          <div class="form-field">
+            <input type="text" id="nuevo-sitio-nombre" placeholder="Ej: Jardín zona norte">
+          </div>
+          <button class="btn-full btn-verde" style="width:auto;padding:10px 16px;" onclick="agregarSitio()">➕ Crear</button>
+        </div>
+        <div id="sitios-lista" style="margin-top:8px;"></div>
+      </div>
+
       <!-- Agregar estudiante -->
       <div class="admin-card">
         <h3>➕ Agregar estudiante</h3>
@@ -404,7 +419,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
         <div class="form-row">
           <div class="form-field">
             <label>Sitio asignado (opcional)</label>
-            <input type="text" id="nuevo-sitio" placeholder="Ej: Jardín zona norte">
+            <select id="nuevo-sitio"><option value="">-- Sin sitio --</option></select>
           </div>
         </div>
         <button class="btn-full btn-verde" onclick="agregarEstudiante()">✅ Agregar estudiante</button>
@@ -416,7 +431,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
         <p style="font-size:12px;color:var(--txt2);margin-bottom:10px;line-height:1.5;">
           Ideal para el inicio del semestre: pega una lista con un estudiante por línea.<br>
           Formato: <b>NOMBRE COMPLETO | SITIO</b> (también puedes pegar dos columnas copiadas directo de Excel).<br>
-          Opcional: agrega el grado en medio si hay nombres repetidos: <b>NOMBRE | GRADO | SITIO</b>.
+          Opcional: agrega el grado en medio si hay nombres repetidos: <b>NOMBRE | GRADO | SITIO</b>.<br>
+          ⚠️ El sitio debe existir ya en <b>📍 Gestionar sitios</b> (arriba) — si escribes uno que no está creado, ese estudiante no se asignará y te lo avisará el resultado.
         </p>
         <textarea id="bulk-sitios" rows="6" style="width:100%;padding:12px;border:2px solid var(--gris-borde);border-radius:10px;font-size:13px;font-family:monospace;resize:vertical;" placeholder="ARIZA EPINAYU MATEO | Jardín zona norte&#10;BOCHETTY SANCHEZ ANGELY | Patio central&#10;..."></textarea>
         <button class="btn-full btn-verde" style="margin-top:10px;" onclick="asignarSitiosBloque()">📍 Asignar sitios</button>
@@ -472,7 +488,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     <div class="form-row">
       <div class="form-field">
         <label>Sitio asignado</label>
-        <input type="text" id="editar-sitio" placeholder="Ej: Jardín zona norte">
+        <select id="editar-sitio"><option value="">-- Sin sitio --</option></select>
       </div>
     </div>
     <button class="btn-full btn-verde" onclick="guardarEdicionEstudiante()">💾 Guardar cambios</button>
@@ -525,6 +541,7 @@ let config = {
 let periodoActivo = 2;
 let estudiantes = [];
 let registros = [];
+let sitios = [];
 let filtroSeguimiento = "todos";
 let filtroReporte = "todos";
 let filtroAdmin = "todos";
@@ -596,12 +613,14 @@ async function guardarConfigDB(clave, valor) {
 // CARGA DE DATOS
 // ═══════════════════════════════════════════════════
 async function cargarDatos() {
-  const [estRes, regRes] = await Promise.all([
+  const [estRes, regRes, sitRes] = await Promise.all([
     supabase_client.from("estudiantes").select("*").order("grado").order("nombre"),
-    supabase_client.from("registros").select("*").eq("periodo", periodoActivo)
+    supabase_client.from("registros").select("*").eq("periodo", periodoActivo),
+    supabase_client.from("sitios").select("*").order("nombre")
   ]);
   estudiantes = estRes.data || [];
   registros = regRes.data || [];
+  sitios = sitRes.data || [];
 }
 
 // ═══════════════════════════════════════════════════
@@ -998,7 +1017,83 @@ function setFA(g, btn) {
 function renderAdmin() {
   renderPeriodosConfig();
   renderTurnosConfig();
+  renderSitios();
   renderAdminLista();
+}
+
+// ═══════════════════════════════════════════════════
+// SITIOS (catálogo homogéneo)
+// ═══════════════════════════════════════════════════
+function renderSitios() {
+  // Lista en el panel de administración
+  const cont = document.getElementById("sitios-lista");
+  if (!sitios.length) {
+    cont.innerHTML = `<p style="font-size:12px;color:var(--txt3);padding:6px 0;">Aún no has creado ningún sitio.</p>`;
+  } else {
+    cont.innerHTML = sitios.map(s => `
+      <div class="est-admin-row">
+        <div style="flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--txt);">📍 ${s.nombre}</div>
+        <button class="btn-del" onclick="eliminarSitio('${s.id}','${s.nombre.replace(/'/g,"\\'")}')">🗑️</button>
+      </div>
+    `).join("");
+  }
+
+  // Poblar los <select> de "nuevo estudiante" y "editar estudiante"
+  const opciones = `<option value="">-- Sin sitio --</option>` +
+    sitios.map(s => `<option value="${s.nombre.replace(/"/g,"&quot;")}">${s.nombre}</option>`).join("");
+
+  const selNuevo = document.getElementById("nuevo-sitio");
+  if (selNuevo) selNuevo.innerHTML = opciones;
+
+  const selEditar = document.getElementById("editar-sitio");
+  if (selEditar) {
+    const valorActual = selEditar.value;
+    selEditar.innerHTML = opciones;
+    if ([...selEditar.options].some(o => o.value === valorActual)) selEditar.value = valorActual;
+  }
+}
+
+async function agregarSitio() {
+  const input = document.getElementById("nuevo-sitio-nombre");
+  const nombre = input.value.trim();
+  if (!nombre || nombre.length < 2) { toast("⚠️ Escribe el nombre del sitio"); return; }
+  if (sitios.some(s => s.nombre.toLowerCase() === nombre.toLowerCase())) { toast("⚠️ Ese sitio ya existe"); return; }
+  try {
+    const { data, error } = await supabase_client.from("sitios").insert({ nombre }).select().single();
+    if (error) throw error;
+    sitios.push(data);
+    sitios.sort((a, b) => a.nombre.localeCompare(b.nombre));
+    input.value = "";
+    toast("✅ Sitio creado");
+    renderSitios();
+  } catch(e) {
+    console.error(e);
+    toast("❌ Error al crear el sitio");
+  }
+}
+
+async function eliminarSitio(id, nombre) {
+  const enUso = estudiantes.filter(e => e.sitio === nombre).length;
+  const aviso = enUso
+    ? `¿Eliminar el sitio "${nombre}"?\n\n${enUso} estudiante(s) lo tienen asignado y quedarán sin sitio.`
+    : `¿Eliminar el sitio "${nombre}"?`;
+  if (!confirm(aviso)) return;
+  try {
+    const { error } = await supabase_client.from("sitios").delete().eq("id", id);
+    if (error) throw error;
+    sitios = sitios.filter(s => s.id !== id);
+    if (enUso) {
+      await supabase_client.from("estudiantes").update({ sitio: null }).eq("sitio", nombre);
+      estudiantes.forEach(e => { if (e.sitio === nombre) e.sitio = null; });
+    }
+    toast("🗑️ Sitio eliminado");
+    renderSitios();
+    renderAdminLista();
+    renderSeguimiento();
+  } catch(e) {
+    console.error(e);
+    toast("❌ Error al eliminar el sitio");
+  }
 }
 
 function renderPeriodosConfig() {
@@ -1055,22 +1150,31 @@ async function asignarSitiosBloque() {
   const actualizaciones = [];
   const noEncontrados = [];
   const ambiguos = [];
+  const sitiosInvalidos = [];
 
   lineas.forEach(linea => {
     let partes = linea.includes("\t") ? linea.split("\t") : linea.split("|");
     partes = partes.map(p => p.trim()).filter(p => p.length > 0);
     if (partes.length < 2) { noEncontrados.push(linea + " (formato inválido)"); return; }
 
-    let nombre, grado, sitio;
+    let nombre, grado, sitioTexto;
     if (partes.length >= 3) {
       nombre = partes[0].toUpperCase();
       grado = partes[1];
-      sitio = partes.slice(2).join(" | ");
+      sitioTexto = partes.slice(2).join(" | ");
     } else {
       nombre = partes[0].toUpperCase();
       grado = null;
-      sitio = partes[1];
+      sitioTexto = partes[1];
     }
+
+    // El sitio debe coincidir con uno ya creado en el catálogo (homogéneo, sin variantes de escritura)
+    const sitioCatalogo = sitios.find(s => s.nombre.toLowerCase() === sitioTexto.toLowerCase());
+    if (!sitioCatalogo) {
+      sitiosInvalidos.push(`"${sitioTexto}" (${nombre})`);
+      return;
+    }
+    const sitio = sitioCatalogo.nombre;
 
     const candidatos = estudiantes.filter(e => e.nombre === nombre && (!grado || e.grado === grado));
     if (candidatos.length === 0) {
@@ -1083,7 +1187,9 @@ async function asignarSitiosBloque() {
   });
 
   if (actualizaciones.length === 0) {
-    resDiv.innerHTML = `❌ No se pudo asignar ningún sitio. Revisa el formato y los nombres (deben coincidir exactamente con los registrados).`;
+    let msg = `❌ No se pudo asignar ningún sitio. Revisa el formato y los nombres (deben coincidir exactamente con los registrados).`;
+    if (sitiosInvalidos.length) msg += `<br>📍 Sitios no encontrados en el catálogo — créalos primero en "Gestionar sitios": ${sitiosInvalidos.join(", ")}`;
+    resDiv.innerHTML = msg;
     return;
   }
 
@@ -1099,6 +1205,7 @@ async function asignarSitiosBloque() {
     let msg = `✅ ${actualizaciones.length} sitio(s) asignado(s) correctamente.`;
     if (ambiguos.length) msg += `<br>⚠️ ${ambiguos.length} nombre(s) repetido(s) en más de un curso (no se asignaron, agrega el grado): ${ambiguos.join(", ")}`;
     if (noEncontrados.length) msg += `<br>❌ ${noEncontrados.length} no encontrado(s): ${noEncontrados.join(", ")}`;
+    if (sitiosInvalidos.length) msg += `<br>📍 ${sitiosInvalidos.length} con sitio no creado en el catálogo: ${sitiosInvalidos.join(", ")}`;
     resDiv.innerHTML = msg;
     document.getElementById("bulk-sitios").value = "";
     toast(`✅ ${actualizaciones.length} sitios asignados`);
