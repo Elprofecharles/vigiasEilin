@@ -7,6 +7,7 @@
 <meta name="theme-color" content="#0D5C3A">
 <title>Vigías Ambientales</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root {
   --verde: #16A363;
@@ -205,6 +206,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .rep-nombre { font-size: 12px; font-weight: 600; color: var(--txt); white-space: normal; overflow-wrap: break-word; line-height: 1.25; }
 .rep-grado { font-size: 11px; color: var(--txt3); }
 .rep-nota-cell { font-size: 14px; font-weight: 800; text-align: center; }
+.rep-sitio, .rep-fechas { display: none; font-size: 10px; color: var(--txt2); line-height: 1.35; overflow-wrap: break-word; }
 .badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 8px; }
 .badge-ok { background: var(--verde-light); color: var(--verde-dark); }
 .badge-no { background: var(--rojo-light); color: var(--rojo); }
@@ -253,18 +255,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .periodo-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.18); border: none; border-radius: 20px; padding: 6px 12px; color: white; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
 
 /* ── PRINT ── */
+@page { size: landscape; margin: 12mm; }
 @media print {
   .header, .nav, .filter-pills, .btn-export, #setup-screen { display: none !important; }
   .tab { display: block !important; }
   #tab-hoy, #tab-admin { display: none !important; }
-  .content { padding: 0; }
+  .content { padding: 0; max-width: none; }
   .print-header { display: block !important; }
   body { background: white; }
   .rep-row { break-inside: avoid; }
+  .rep-thead, .rep-row { grid-template-columns: 26px 1.3fr 55px 1fr 1.3fr 55px 70px !important; }
+  .rep-sitio, .rep-fechas { display: block !important; }
 }
-.print-header { display: none; text-align: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 2px solid #333; }
-.print-header h2 { font-size: 18px; font-weight: 800; }
+.print-header { display: none; text-align: center; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 2px solid #333; }
+.print-header .ph-eslogan { font-size: 15px; font-weight: 800; color: var(--verde-dark); letter-spacing: 0.3px; }
+.print-header h2 { font-size: 15px; font-weight: 800; margin-top: 4px; }
 .print-header p { font-size: 12px; color: #555; margin-top: 4px; }
+.print-header .ph-docente { font-size: 12px; color: #555; margin-top: 2px; }
 
 @media (max-width: 380px) {
   .turnos-grid { grid-template-columns: repeat(5, 1fr); gap: 5px; }
@@ -359,7 +366,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       </div>
       <div class="stats-row" id="rep-stats-row" style="margin-bottom:14px;"></div>
       <button class="btn-export btn-print" onclick="imprimirReporte()">🖨️ Imprimir / Guardar PDF</button>
-      <button class="btn-export btn-csv" onclick="exportarCSV()">📊 Exportar a Excel (.csv)</button>
+      <button class="btn-export btn-csv" onclick="exportarExcel()">📊 Exportar a Excel (.xlsx)</button>
       <div class="print-header" id="print-header"></div>
       <div class="rep-table" id="rep-table">
         <div class="loading"><div class="spinner"></div></div>
@@ -928,6 +935,14 @@ function getRowsReporte() {
   }).sort((a, b) => a.grado.localeCompare(b.grado) || a.nombre.localeCompare(b.nombre));
 }
 
+function fechasDeEstudiante(estId) {
+  return registros
+    .filter(r => r.estudiante_id === estId)
+    .sort((a, b) => a.turno - b.turno)
+    .map(r => `T${r.turno}: ${formatFecha(r.fecha)}`)
+    .join(" · ");
+}
+
 function renderReporte() {
   const rows = getRowsReporte();
   const aprobados = rows.filter(r => r.estado === "Aprobado").length;
@@ -942,8 +957,10 @@ function renderReporte() {
 
   const periodo = config.periodos.find(p => p.id === periodoActivo);
   document.getElementById("print-header").innerHTML = `
-    <h2>🌿 Vigías Ambientales — Reporte de Calificaciones</h2>
-    <p>${periodo?.nombre || ""} · Biología Grado 9° · Generado: ${new Date().toLocaleDateString("es-CO")}</p>
+    <div class="ph-eslogan">🌿 Cuidando el medio ambiente desde la escuela</div>
+    <h2>Institución Educativa Helion Pinedo Ríos</h2>
+    <div class="ph-docente">Docente: Eilin Márquez</div>
+    <p>Vigías Ambientales — Reporte de calificaciones · ${periodo?.nombre || ""} · ${filtroReporte === "todos" ? "Todos los grados" : "Grado " + filtroReporte} · Generado: ${new Date().toLocaleDateString("es-CO")}</p>
   `;
 
   if (!rows.length) {
@@ -955,13 +972,15 @@ function renderReporte() {
 
   document.getElementById("rep-table").innerHTML = `
     <div class="rep-thead">
-      <span>#</span><span>Estudiante</span><span style="text-align:center">Grado</span><span style="text-align:center">Nota</span><span style="text-align:center">Estado</span>
+      <span>#</span><span>Estudiante</span><span style="text-align:center">Grado</span><span class="rep-sitio">Sitio</span><span class="rep-fechas">Fechas registradas</span><span style="text-align:center">Nota</span><span style="text-align:center">Estado</span>
     </div>
     ${rows.map((r, i) => `
     <div class="rep-row">
       <span class="rep-num">${i + 1}</span>
       <span class="rep-nombre" title="${r.nombre}">${r.nombre}</span>
       <span style="text-align:center;font-size:12px;color:var(--txt2)">${r.grado}</span>
+      <span class="rep-sitio">${r.sitio || "—"}</span>
+      <span class="rep-fechas">${fechasDeEstudiante(r.id) || "—"}</span>
       <span class="rep-nota-cell ${clsN(r.nota)}">${r.nota.toFixed(1)}</span>
       <span style="text-align:center"><span class="badge ${r.estado==='Aprobado'?'badge-ok':'badge-no'}">${r.estado}</span></span>
     </div>`).join("")}
@@ -970,23 +989,53 @@ function renderReporte() {
 
 function imprimirReporte() { renderReporte(); setTimeout(() => window.print(), 150); }
 
-function exportarCSV() {
+function exportarExcel() {
   const rows = getRowsReporte();
   if (!rows.length) { toast("⚠️ Sin datos para exportar"); return; }
   const periodo = config.periodos.find(p => p.id === periodoActivo);
-  let csv = "\uFEFF";
-  csv += `Vigías Ambientales - ${periodo?.nombre || ""}\n`;
-  csv += `N°,Nombre,Grado,Sitio asignado,Turnos cumplidos,Turnos totales,Nota (0-10),Estado\n`;
-  rows.forEach((r, i) => {
-    csv += `${i+1},"${r.nombre}",${r.grado},"${r.sitio || ""}",${r.cumplidos},${r.maxTurnos},${r.nota.toFixed(1)},${r.estado}\n`;
+  const maxT = Math.max(...rows.map(r => r.maxTurnos), 1);
+
+  const encabezado = [
+    ["🌿 CUIDANDO EL MEDIO AMBIENTE DESDE LA ESCUELA"],
+    ["INSTITUCIÓN EDUCATIVA HELION PINEDO RÍOS"],
+    ["Docente: Eilin Márquez"],
+    [`Vigías Ambientales — Reporte de calificaciones · ${periodo?.nombre || ""} · ${filtroReporte === "todos" ? "Todos los grados" : "Grado " + filtroReporte} · Generado: ${new Date().toLocaleDateString("es-CO")}`],
+    []
+  ];
+
+  const columnasTurno = Array.from({ length: maxT }, (_, i) => `Turno ${i+1} (fecha)`);
+  const encabezadoTabla = ["N°", "Nombre", "Grado", "Sitio asignado", ...columnasTurno, "Turnos cumplidos", "Turnos totales", "Nota (0-10)", "Estado"];
+
+  const datos = rows.map((r, i) => {
+    const regsEst = registros.filter(x => x.estudiante_id === r.id);
+    const fechasTurno = Array.from({ length: maxT }, (_, t) => {
+      const reg = regsEst.find(x => x.turno === t + 1);
+      return reg ? formatFecha(reg.fecha) : "";
+    });
+    return [i + 1, r.nombre, r.grado, r.sitio || "", ...fechasTurno, r.cumplidos, r.maxTurnos, r.nota.toFixed(1), r.estado];
   });
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `vigias_p${periodoActivo}_${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+
+  const hoja = [...encabezado, encabezadoTabla, ...datos];
+  const ws = XLSX.utils.aoa_to_sheet(hoja);
+
+  const totalCols = encabezadoTabla.length;
+  ws["!merges"] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } },
+    { s: { r: 2, c: 0 }, e: { r: 2, c: totalCols - 1 } },
+    { s: { r: 3, c: 0 }, e: { r: 3, c: totalCols - 1 } }
+  ];
+  ws["!cols"] = [
+    { wch: 4 }, { wch: 30 }, { wch: 7 }, { wch: 20 },
+    ...columnasTurno.map(() => ({ wch: 14 })),
+    { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }
+  ];
+  ws["!pageSetup"] = { orientation: "landscape", fitToWidth: 1, fitToHeight: 0 };
+  ws["!print"] = { area: `A1:${XLSX.utils.encode_col(totalCols - 1)}${hoja.length}` };
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Reporte");
+  XLSX.writeFile(wb, `vigias_p${periodoActivo}_${new Date().toISOString().slice(0,10)}.xlsx`);
   toast("✅ Archivo descargado");
 }
 
