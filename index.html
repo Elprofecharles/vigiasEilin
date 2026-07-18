@@ -425,20 +425,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
         <button class="btn-full btn-verde" onclick="agregarEstudiante()">✅ Agregar estudiante</button>
       </div>
 
-      <!-- Asignar sitios en bloque -->
-      <div class="admin-card">
-        <h3>📍 Asignar sitios en bloque</h3>
-        <p style="font-size:12px;color:var(--txt2);margin-bottom:10px;line-height:1.5;">
-          Ideal para el inicio del semestre: pega una lista con un estudiante por línea.<br>
-          Formato: <b>NOMBRE COMPLETO | SITIO</b> (también puedes pegar dos columnas copiadas directo de Excel).<br>
-          Opcional: agrega el grado en medio si hay nombres repetidos: <b>NOMBRE | GRADO | SITIO</b>.<br>
-          ⚠️ El sitio debe existir ya en <b>📍 Gestionar sitios</b> (arriba) — si escribes uno que no está creado, ese estudiante no se asignará y te lo avisará el resultado.
-        </p>
-        <textarea id="bulk-sitios" rows="6" style="width:100%;padding:12px;border:2px solid var(--gris-borde);border-radius:10px;font-size:13px;font-family:monospace;resize:vertical;" placeholder="ARIZA EPINAYU MATEO | Jardín zona norte&#10;BOCHETTY SANCHEZ ANGELY | Patio central&#10;..."></textarea>
-        <button class="btn-full btn-verde" style="margin-top:10px;" onclick="asignarSitiosBloque()">📍 Asignar sitios</button>
-        <div id="bulk-resultado" style="font-size:12px;color:var(--txt2);margin-top:10px;line-height:1.5;"></div>
-      </div>
-
       <!-- Lista de estudiantes -->
       <div class="admin-card">
         <h3>👥 Estudiantes registrados</h3>
@@ -1138,85 +1124,6 @@ async function guardarConfigTurnos() {
   await guardarConfigDB("turnos", config.turnos);
   toast("✅ Turnos actualizados");
   renderSeguimiento();
-}
-
-async function asignarSitiosBloque() {
-  const texto = document.getElementById("bulk-sitios").value;
-  const lineas = texto.split("\n").map(l => l.trim()).filter(l => l.length > 0);
-  const resDiv = document.getElementById("bulk-resultado");
-
-  if (lineas.length === 0) { toast("⚠️ Pega la lista primero"); return; }
-
-  const actualizaciones = [];
-  const noEncontrados = [];
-  const ambiguos = [];
-  const sitiosInvalidos = [];
-
-  lineas.forEach(linea => {
-    let partes = linea.includes("\t") ? linea.split("\t") : linea.split("|");
-    partes = partes.map(p => p.trim()).filter(p => p.length > 0);
-    if (partes.length < 2) { noEncontrados.push(linea + " (formato inválido)"); return; }
-
-    let nombre, grado, sitioTexto;
-    if (partes.length >= 3) {
-      nombre = partes[0].toUpperCase();
-      grado = partes[1];
-      sitioTexto = partes.slice(2).join(" | ");
-    } else {
-      nombre = partes[0].toUpperCase();
-      grado = null;
-      sitioTexto = partes[1];
-    }
-
-    // El sitio debe coincidir con uno ya creado en el catálogo (homogéneo, sin variantes de escritura)
-    const sitioCatalogo = sitios.find(s => s.nombre.toLowerCase() === sitioTexto.toLowerCase());
-    if (!sitioCatalogo) {
-      sitiosInvalidos.push(`"${sitioTexto}" (${nombre})`);
-      return;
-    }
-    const sitio = sitioCatalogo.nombre;
-
-    const candidatos = estudiantes.filter(e => e.nombre === nombre && (!grado || e.grado === grado));
-    if (candidatos.length === 0) {
-      noEncontrados.push(`${nombre}${grado ? " (" + grado + ")" : ""}`);
-    } else if (candidatos.length > 1) {
-      ambiguos.push(nombre);
-    } else {
-      actualizaciones.push({ est: candidatos[0], sitio });
-    }
-  });
-
-  if (actualizaciones.length === 0) {
-    let msg = `❌ No se pudo asignar ningún sitio. Revisa el formato y los nombres (deben coincidir exactamente con los registrados).`;
-    if (sitiosInvalidos.length) msg += `<br>📍 Sitios no encontrados en el catálogo — créalos primero en "Gestionar sitios": ${sitiosInvalidos.join(", ")}`;
-    resDiv.innerHTML = msg;
-    return;
-  }
-
-  const btn = document.querySelector("button[onclick='asignarSitiosBloque()']");
-  if (btn) { btn.textContent = "Guardando..."; btn.disabled = true; }
-
-  try {
-    await Promise.all(actualizaciones.map(({ est, sitio }) =>
-      supabase_client.from("estudiantes").update({ sitio }).eq("id", est.id)
-    ));
-    actualizaciones.forEach(({ est, sitio }) => { est.sitio = sitio; });
-
-    let msg = `✅ ${actualizaciones.length} sitio(s) asignado(s) correctamente.`;
-    if (ambiguos.length) msg += `<br>⚠️ ${ambiguos.length} nombre(s) repetido(s) en más de un curso (no se asignaron, agrega el grado): ${ambiguos.join(", ")}`;
-    if (noEncontrados.length) msg += `<br>❌ ${noEncontrados.length} no encontrado(s): ${noEncontrados.join(", ")}`;
-    if (sitiosInvalidos.length) msg += `<br>📍 ${sitiosInvalidos.length} con sitio no creado en el catálogo: ${sitiosInvalidos.join(", ")}`;
-    resDiv.innerHTML = msg;
-    document.getElementById("bulk-sitios").value = "";
-    toast(`✅ ${actualizaciones.length} sitios asignados`);
-    renderAdminLista();
-    renderSeguimiento();
-  } catch(e) {
-    console.error(e);
-    toast("❌ Error al guardar los sitios");
-  } finally {
-    if (btn) { btn.textContent = "📍 Asignar sitios"; btn.disabled = false; }
-  }
 }
 
 async function agregarEstudiante() {
