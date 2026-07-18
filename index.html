@@ -820,7 +820,7 @@ function actualizarModalNota() {
     const fecha = reg ? formatFecha(reg.fecha) : "";
     return `<button class="turno-btn ${clase}" onclick="seleccionarTurno(${t})">
       <span class="t-num">${t}</span>
-      <span class="t-lbl">${reg ? "✓" : ""}${fecha ? `<br>${fecha}` : "Turno<br>${t}"}</span>
+      <span class="t-lbl">${reg ? "✓" : ""}${fecha ? `<br>${fecha}` : "Turno"}</span>
     </button>`;
   }).join("");
 
