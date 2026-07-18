@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0D5C3A">
+<title>Vigías Ambientales</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
+<style>
+:root {
+  --verde: #16A363;
+  --verde-dark: #0D5C3A;
+  --verde-light: #D6F0E3;
+  --verde-mid: #52C490;
+  --amber: #D97706;
+  --amber-light: #FEF3C7;
+  --rojo: #DC2626;
+  --rojo-light: #FEE2E2;
+  --azul: #2563EB;
+  --gris-bg: #F0F4F2;
+  --gris-card: #FFFFFF;
+  --gris-borde: #D1D9D5;
+  --gris-2: #E5EDE9;
+  --txt: #0F1F17;
+  --txt2: #4B6358;
+  --txt3: #8BA89A;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 1px 4px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.12);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html { height: 100%; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--gris-bg); color: var(--txt); min-height: 100%; overscroll-behavior: none; }
+
+/* ── SETUP SCREEN ── */
+#setup-screen {
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding: 24px;
+  background: linear-gradient(135deg, var(--verde-dark) 0%, #1a7a50 100%);
+}
+.setup-card { background: white; border-radius: 20px; padding: 32px 24px; max-width: 420px; width: 100%; box-shadow: var(--shadow-lg); }
+.setup-logo { text-align: center; margin-bottom: 24px; }
+.setup-logo .icon { font-size: 48px; display: block; margin-bottom: 8px; }
+.setup-logo h1 { font-size: 22px; font-weight: 800; color: var(--verde-dark); }
+.setup-logo p { font-size: 13px; color: var(--txt2); margin-top: 4px; }
+.setup-field { margin-bottom: 16px; }
+.setup-field label { display: block; font-size: 12px; font-weight: 700; color: var(--txt2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.setup-field input { width: 100%; padding: 12px 14px; border: 2px solid var(--gris-borde); border-radius: var(--radius-sm); font-size: 13px; font-family: monospace; color: var(--txt); transition: border-color 0.2s; }
+.setup-field input:focus { outline: none; border-color: var(--verde); }
+.setup-hint { font-size: 11px; color: var(--txt3); margin-top: 4px; line-height: 1.4; }
+.btn-setup { width: 100%; padding: 14px; background: var(--verde-dark); color: white; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 8px; font-family: inherit; }
+.btn-setup:hover { background: var(--verde); }
+.setup-steps { background: var(--gris-bg); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 20px; }
+.setup-steps h3 { font-size: 13px; font-weight: 700; color: var(--verde-dark); margin-bottom: 10px; }
+.setup-steps ol { padding-left: 16px; }
+.setup-steps li { font-size: 12px; color: var(--txt2); margin-bottom: 6px; line-height: 1.4; }
+.setup-steps a { color: var(--verde); font-weight: 600; }
+
+/* ── HEADER ── */
+.app { display: none; flex-direction: column; min-height: 100vh; }
+.app.visible { display: flex; }
+.header {
+  background: linear-gradient(135deg, var(--verde-dark) 0%, #1a7a50 100%);
+  color: white; padding: 0; position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.header-top { display: flex; align-items: center; gap: 10px; padding: 14px 16px 0; }
+.header-icon { width: 40px; height: 40px; background: rgba(255,255,255,0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.header-text { flex: 1; min-width: 0; }
+.header-title { font-size: 17px; font-weight: 800; letter-spacing: -0.3px; }
+.header-sub { font-size: 11px; opacity: 0.75; margin-top: 1px; }
+.header-periodo { background: rgba(255,255,255,0.2); border: none; border-radius: 20px; padding: 5px 12px; color: white; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 5px; }
+.header-periodo:hover { background: rgba(255,255,255,0.3); }
+
+/* ── NAV ── */
+.nav { display: flex; padding: 8px 8px 0; gap: 2px; }
+.nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px 10px; background: none; border: none; border-bottom: 3px solid transparent; color: rgba(255,255,255,0.55); cursor: pointer; font-family: inherit; transition: all 0.15s; font-size: 10px; font-weight: 600; letter-spacing: 0.2px; }
+.nav-btn .ni { font-size: 18px; line-height: 1; }
+.nav-btn.active { color: white; border-bottom-color: rgba(255,255,255,0.9); }
+
+/* ── CONTENT ── */
+.content { flex: 1; padding: 14px 12px 90px; max-width: 520px; margin: 0 auto; width: 100%; }
+.tab { display: none; }
+.tab.active { display: block; }
+
+/* ── PERIODO SELECTOR MODAL ── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: flex-end; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal-sheet { background: white; border-radius: 20px 20px 0 0; padding: 20px; width: 100%; max-width: 520px; box-shadow: var(--shadow-lg); }
+.modal-handle { width: 40px; height: 4px; background: var(--gris-borde); border-radius: 2px; margin: 0 auto 16px; }
+.modal-title { font-size: 16px; font-weight: 800; color: var(--txt); margin-bottom: 14px; }
+.periodo-option { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: var(--radius-sm); margin-bottom: 8px; border: 2px solid var(--gris-borde); cursor: pointer; transition: all 0.15s; background: white; width: 100%; font-family: inherit; text-align: left; }
+.periodo-option:hover, .periodo-option.active { border-color: var(--verde); background: var(--verde-light); }
+.periodo-num { width: 36px; height: 36px; border-radius: 50%; background: var(--verde-dark); color: white; font-size: 15px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.periodo-info .pi-name { font-size: 14px; font-weight: 700; color: var(--txt); }
+.periodo-info .pi-dates { font-size: 11px; color: var(--txt2); margin-top: 2px; }
+.periodo-info .pi-status { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; margin-top: 4px; }
+.status-activo { background: var(--verde-light); color: var(--verde-dark); }
+.status-futuro { background: var(--amber-light); color: var(--amber); }
+.status-pasado { background: var(--gris-2); color: var(--txt3); }
+
+/* ── CARDS & SECTIONS ── */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin: 16px 2px 10px; }
+.section-title { font-size: 13px; font-weight: 700; color: var(--txt2); text-transform: uppercase; letter-spacing: 0.5px; }
+.btn-sm { padding: 6px 14px; border-radius: 20px; border: none; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+.btn-verde { background: var(--verde-dark); color: white; }
+.btn-verde:hover { background: var(--verde); }
+.btn-rojo { background: var(--rojo-light); color: var(--rojo); }
+.btn-azul { background: #DBEAFE; color: var(--azul); }
+
+/* ── STATS ROW ── */
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+.stat-card { background: var(--gris-card); border-radius: var(--radius-sm); padding: 12px 10px; box-shadow: var(--shadow); text-align: center; }
+.stat-val { font-size: 24px; font-weight: 800; line-height: 1; }
+.stat-lbl { font-size: 10px; color: var(--txt3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 4px; }
+.sv-verde { color: var(--verde-dark); }
+.sv-amber { color: var(--amber); }
+.sv-rojo { color: var(--rojo); }
+
+/* ── CURSO CARDS ── */
+.curso-card { background: var(--gris-card); border-radius: var(--radius); padding: 0; margin-bottom: 12px; box-shadow: var(--shadow); overflow: hidden; }
+.curso-header { display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; user-select: none; }
+.curso-badge { width: 44px; height: 44px; border-radius: 12px; background: var(--verde-dark); color: white; font-size: 14px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.curso-info { flex: 1; min-width: 0; }
+.curso-name { font-size: 16px; font-weight: 800; color: var(--txt); }
+.curso-meta { font-size: 12px; color: var(--txt2); margin-top: 2px; }
+.curso-progress { text-align: right; }
+.curso-pct { font-size: 20px; font-weight: 800; color: var(--verde-dark); }
+.curso-pct-lbl { font-size: 10px; color: var(--txt3); }
+.curso-bar { height: 4px; background: var(--gris-2); margin: 0 16px 14px; border-radius: 2px; overflow: hidden; }
+.curso-bar-fill { height: 4px; background: linear-gradient(90deg, var(--verde-dark), var(--verde-mid)); border-radius: 2px; transition: width 0.4s; }
+.curso-body { display: none; border-top: 1px solid var(--gris-2); }
+.curso-body.open { display: block; }
+
+/* ── ESTUDIANTE ROWS ── */
+.est-row { display: flex; align-items: center; gap: 10px; padding: 11px 16px; border-bottom: 1px solid var(--gris-2); }
+.est-row:last-child { border-bottom: none; }
+.est-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--verde-light); color: var(--verde-dark); font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.est-info { flex: 1; min-width: 0; }
+.est-name { font-size: 13px; font-weight: 600; color: var(--txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.est-turnos { font-size: 11px; color: var(--txt3); margin-top: 1px; }
+.mini-bar { width: 50px; }
+.mini-bar-bg { height: 5px; background: var(--gris-2); border-radius: 3px; overflow: hidden; margin-bottom: 2px; }
+.mini-bar-fill { height: 5px; border-radius: 3px; }
+.mf-alta { background: var(--verde); }
+.mf-media { background: var(--amber); }
+.mf-baja { background: var(--rojo); }
+.mini-nota { font-size: 13px; font-weight: 800; text-align: right; }
+.mn-alta { color: var(--verde-dark); }
+.mn-media { color: var(--amber); }
+.mn-baja { color: var(--rojo); }
+.btn-icon { background: none; border: none; cursor: pointer; font-size: 18px; padding: 4px; }
+
+/* ── REGISTRO MODAL ── */
+.reg-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 300; display: none; align-items: flex-end; justify-content: center; }
+.reg-modal.open { display: flex; }
+.reg-sheet { background: white; border-radius: 20px 20px 0 0; padding: 20px 20px 32px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
+.reg-est-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.reg-avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--verde-light); color: var(--verde-dark); font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.reg-est-name { font-size: 17px; font-weight: 800; color: var(--txt); }
+.reg-est-sub { font-size: 12px; color: var(--txt2); margin-top: 2px; }
+
+/* ── NOTA GRANDE ── */
+.nota-grande { background: linear-gradient(135deg, var(--verde-dark), #1a7a50); border-radius: var(--radius); padding: 20px; text-align: center; margin-bottom: 18px; }
+.nota-val { font-size: 52px; font-weight: 900; color: white; line-height: 1; }
+.nota-max { font-size: 18px; color: rgba(255,255,255,0.6); }
+.nota-lbl { font-size: 12px; color: rgba(255,255,255,0.75); margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.nota-barra { height: 10px; background: rgba(255,255,255,0.2); border-radius: 5px; margin-top: 12px; overflow: hidden; }
+.nota-barra-fill { height: 10px; background: white; border-radius: 5px; transition: width 0.5s cubic-bezier(.4,0,.2,1); }
+
+/* ── TURNOS ── */
+.turnos-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 18px; }
+.turno-btn { aspect-ratio: 1; border-radius: var(--radius-sm); border: 2px solid var(--gris-borde); background: white; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; font-family: inherit; transition: all 0.15s; gap: 4px; padding: 4px; }
+.turno-btn:active { transform: scale(0.95); }
+.turno-btn .t-num { font-size: 16px; font-weight: 800; color: var(--txt3); }
+.turno-btn .t-lbl { font-size: 9px; color: var(--txt3); text-align: center; line-height: 1.2; }
+.turno-btn.cumplido { background: var(--verde-dark); border-color: var(--verde-dark); }
+.turno-btn.cumplido .t-num { color: white; }
+.turno-btn.cumplido .t-lbl { color: rgba(255,255,255,0.8); }
+.turno-btn.seleccionado { border-color: var(--amber); background: var(--amber-light); }
+.turno-btn.seleccionado .t-num { color: var(--amber); }
+
+/* ── FECHA PICKER ── */
+.fecha-picker { background: var(--gris-bg); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 16px; display: none; }
+.fecha-picker.visible { display: block; }
+.fecha-picker label { font-size: 12px; font-weight: 700; color: var(--txt2); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 8px; }
+.fecha-picker input[type=date] { width: 100%; padding: 10px 14px; border: 2px solid var(--gris-borde); border-radius: var(--radius-sm); font-size: 15px; font-family: inherit; color: var(--txt); background: white; }
+.fecha-picker input[type=date]:focus { outline: none; border-color: var(--verde); }
+.btn-guardar-turno { width: 100%; padding: 15px; background: var(--verde-dark); color: white; border: none; border-radius: var(--radius-sm); font-size: 16px; font-weight: 800; cursor: pointer; font-family: inherit; transition: all 0.15s; margin-bottom: 8px; }
+.btn-guardar-turno:active { background: var(--verde); transform: scale(0.98); }
+.btn-quitar-turno { width: 100%; padding: 12px; background: var(--rojo-light); color: var(--rojo); border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; display: none; }
+.btn-quitar-turno.visible { display: block; }
+
+/* ── TAB REPORTE ── */
+.filter-pills { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.fpill { padding: 7px 14px; border-radius: 20px; border: 2px solid var(--gris-borde); font-size: 12px; font-weight: 700; cursor: pointer; background: white; color: var(--txt2); font-family: inherit; transition: all 0.15s; }
+.fpill.active { background: var(--verde-dark); color: white; border-color: var(--verde-dark); }
+.rep-table { background: white; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 14px; }
+.rep-thead { display: grid; grid-template-columns: 32px 1fr 60px 60px 70px; gap: 8px; padding: 10px 14px; background: var(--verde-dark); color: white; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+.rep-row { display: grid; grid-template-columns: 32px 1fr 60px 60px 70px; gap: 8px; padding: 11px 14px; border-bottom: 1px solid var(--gris-2); align-items: center; }
+.rep-row:last-child { border-bottom: none; }
+.rep-num { font-size: 11px; color: var(--txt3); font-weight: 600; }
+.rep-nombre { font-size: 12px; font-weight: 600; color: var(--txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rep-grado { font-size: 11px; color: var(--txt3); }
+.rep-nota-cell { font-size: 14px; font-weight: 800; text-align: center; }
+.badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 8px; }
+.badge-ok { background: var(--verde-light); color: var(--verde-dark); }
+.badge-no { background: var(--rojo-light); color: var(--rojo); }
+.btn-export { display: flex; align-items: center; gap: 8px; justify-content: center; width: 100%; padding: 14px; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; margin-bottom: 10px; transition: all 0.15s; }
+.btn-print { background: var(--verde-dark); color: white; }
+.btn-csv { background: #DBEAFE; color: var(--azul); }
+
+/* ── ADMIN TAB ── */
+.admin-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; margin-bottom: 12px; }
+.admin-card h3 { font-size: 14px; font-weight: 800; color: var(--txt); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.form-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.form-field { flex: 1; }
+.form-field label { font-size: 11px; font-weight: 700; color: var(--txt2); text-transform: uppercase; letter-spacing: 0.4px; display: block; margin-bottom: 5px; }
+.form-field select, .form-field input { width: 100%; padding: 10px 12px; border: 2px solid var(--gris-borde); border-radius: var(--radius-sm); font-size: 14px; font-family: inherit; color: var(--txt); background: var(--gris-bg); transition: border-color 0.15s; }
+.form-field select:focus, .form-field input:focus { outline: none; border-color: var(--verde); background: white; }
+.btn-full { width: 100%; padding: 13px; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+.btn-full:active { transform: scale(0.98); }
+.est-admin-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--gris-2); }
+.est-admin-row:last-child { border-bottom: none; }
+.est-admin-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--txt); }
+.est-admin-grado { font-size: 11px; color: var(--txt3); }
+.btn-del { background: none; border: none; color: var(--rojo); font-size: 20px; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+.btn-del:hover { background: var(--rojo-light); }
+
+/* ── CONFIG TURNOS ── */
+.turno-config { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--gris-2); }
+.turno-config:last-child { border-bottom: none; }
+.turno-config-name { flex: 1; font-size: 13px; font-weight: 600; }
+.turno-config-num { display: flex; align-items: center; gap: 8px; }
+.turno-config-num button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--gris-borde); background: white; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+.turno-config-num span { font-size: 16px; font-weight: 800; min-width: 24px; text-align: center; }
+
+/* ── EMPTY / LOADING ── */
+.empty { text-align: center; padding: 40px 20px; }
+.empty-icon { font-size: 44px; margin-bottom: 12px; }
+.empty p { font-size: 14px; color: var(--txt3); line-height: 1.5; }
+.loading { text-align: center; padding: 30px; }
+.spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid var(--gris-2); border-top-color: var(--verde); border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── TOAST ── */
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #0F1F17; color: white; padding: 12px 22px; border-radius: 24px; font-size: 14px; font-weight: 600; opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 999; white-space: nowrap; max-width: 90vw; box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+#toast.show { opacity: 1; }
+
+/* ── PERIODO BADGE EN HEADER ── */
+.periodo-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.18); border: none; border-radius: 20px; padding: 6px 12px; color: white; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+
+/* ── PRINT ── */
+@media print {
+  .header, .nav, .filter-pills, .btn-export, #setup-screen { display: none !important; }
+  .tab { display: block !important; }
+  #tab-hoy, #tab-admin { display: none !important; }
+  .content { padding: 0; }
+  .print-header { display: block !important; }
+  body { background: white; }
+  .rep-row { break-inside: avoid; }
+}
+.print-header { display: none; text-align: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 2px solid #333; }
+.print-header h2 { font-size: 18px; font-weight: 800; }
+.print-header p { font-size: 12px; color: #555; margin-top: 4px; }
+
+@media (max-width: 380px) {
+  .turnos-grid { grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .rep-thead, .rep-row { grid-template-columns: 24px 1fr 50px 50px 60px; gap: 4px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ SETUP SCREEN ═══════════════ -->
+<div id="setup-screen">
+  <div class="setup-card">
+    <div class="setup-logo">
+      <span class="icon">🌿</span>
+      <h1>Vigías Ambientales</h1>
+      <p>Configuración inicial · Solo se hace una vez</p>
+    </div>
+
+    <div class="setup-steps">
+      <h3>📋 Cómo conectar tu base de datos:</h3>
+      <ol>
+        <li>Ve a <a href="https://supabase.com" target="_blank">supabase.com</a> → "Start your project" → entra con Google o GitHub</li>
+        <li>Crea un nuevo proyecto (nombre: vigias, región: South America)</li>
+        <li>Espera ~2 minutos a que se cree</li>
+        <li>Ve a <strong>Settings → API</strong></li>
+        <li>Copia la <strong>Project URL</strong> y la <strong>anon public key</strong> y pégalas abajo</li>
+        <li>Ve a <strong>SQL Editor</strong> y ejecuta el SQL que te envié aparte</li>
+      </ol>
+    </div>
+
+    <div class="setup-field">
+      <label>Supabase Project URL</label>
+      <input type="text" id="sb-url" placeholder="https://xxxx.supabase.co" autocomplete="off" autocorrect="off" spellcheck="false">
+      <div class="setup-hint">Ejemplo: https://abcdefghijkl.supabase.co</div>
+    </div>
+    <div class="setup-field">
+      <label>Supabase Anon Key</label>
+      <input type="text" id="sb-key" placeholder="eyJhbGciOiJIUzI1NiIs..." autocomplete="off" autocorrect="off" spellcheck="false">
+      <div class="setup-hint">La clave pública (anon public) — no la service role key</div>
+    </div>
+    <button class="btn-setup" onclick="conectarSupabase()">🔗 Conectar y entrar</button>
+  </div>
+</div>
+
+<!-- ═══════════════ APP PRINCIPAL ═══════════════ -->
+<div class="app" id="app">
+  <div class="header">
+    <div class="header-top">
+      <div class="header-icon">🌿</div>
+      <div class="header-text">
+        <div class="header-title">Vigías Ambientales</div>
+        <div class="header-sub" id="header-sub">Biología · Grados 9°</div>
+      </div>
+      <button class="periodo-badge" onclick="abrirPeriodos()" id="btn-periodo">
+        Período 1 ▾
+      </button>
+    </div>
+    <nav class="nav">
+      <button class="nav-btn active" onclick="showTab('hoy',this)"><span class="ni">📋</span>Seguimiento</button>
+      <button class="nav-btn" onclick="showTab('reporte',this)"><span class="ni">📊</span>Reporte</button>
+      <button class="nav-btn" onclick="showTab('admin',this)"><span class="ni">⚙️</span>Administrar</button>
+    </nav>
+  </div>
+
+  <div class="content">
+
+    <!-- ── TAB SEGUIMIENTO ── -->
+    <div id="tab-hoy" class="tab active">
+      <div class="stats-row" id="stats-row">
+        <div class="stat-card"><div class="stat-val sv-verde" id="s-total">—</div><div class="stat-lbl">Asistencias</div></div>
+        <div class="stat-card"><div class="stat-val sv-amber" id="s-pct">—</div><div class="stat-lbl">Cumplimiento</div></div>
+        <div class="stat-card"><div class="stat-val" id="s-prom">—</div><div class="stat-lbl">Promedio</div></div>
+      </div>
+      <div id="cursos-list">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- ── TAB REPORTE ── -->
+    <div id="tab-reporte" class="tab">
+      <div class="filter-pills" id="filtro-rep">
+        <button class="fpill active" onclick="setFR('todos',this)">Todos</button>
+        <button class="fpill" onclick="setFR('901',this)">901</button>
+        <button class="fpill" onclick="setFR('902',this)">902</button>
+        <button class="fpill" onclick="setFR('903',this)">903</button>
+      </div>
+      <div class="stats-row" id="rep-stats-row" style="margin-bottom:14px;"></div>
+      <button class="btn-export btn-print" onclick="imprimirReporte()">🖨️ Imprimir / Guardar PDF</button>
+      <button class="btn-export btn-csv" onclick="exportarCSV()">📊 Exportar a Excel (.csv)</button>
+      <div class="print-header" id="print-header"></div>
+      <div class="rep-table" id="rep-table">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- ── TAB ADMIN ── -->
+    <div id="tab-admin" class="tab">
+
+      <!-- Config períodos -->
+      <div class="admin-card">
+        <h3>📅 Configurar períodos</h3>
+        <div id="periodos-config"></div>
+      </div>
+
+      <!-- Config turnos por grado -->
+      <div class="admin-card">
+        <h3>🔢 Turnos por período y grado</h3>
+        <div id="turnos-config"></div>
+        <button class="btn-full btn-verde" style="margin-top:12px;" onclick="guardarConfigTurnos()">💾 Guardar configuración</button>
+      </div>
+
+      <!-- Agregar estudiante -->
+      <div class="admin-card">
+        <h3>➕ Agregar estudiante</h3>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Nombre completo</label>
+            <input type="text" id="nuevo-nombre" placeholder="APELLIDO NOMBRE" style="text-transform:uppercase;">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Grado</label>
+            <select id="nuevo-grado">
+              <option value="901">901</option>
+              <option value="902">902</option>
+              <option value="903">903</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-full btn-verde" onclick="agregarEstudiante()">✅ Agregar estudiante</button>
+      </div>
+
+      <!-- Lista de estudiantes -->
+      <div class="admin-card">
+        <h3>👥 Estudiantes registrados</h3>
+        <div class="filter-pills" id="filtro-admin">
+          <button class="fpill active" onclick="setFA('todos',this)">Todos</button>
+          <button class="fpill" onclick="setFA('901',this)">901</button>
+          <button class="fpill" onclick="setFA('902',this)">902</button>
+          <button class="fpill" onclick="setFA('903',this)">903</button>
+        </div>
+        <div id="admin-est-list"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── MODAL PERÍODOS ── -->
+<div class="modal-overlay" id="modal-periodos" onclick="if(event.target===this)cerrarModal('modal-periodos')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Seleccionar período</div>
+    <div id="periodos-list"></div>
+  </div>
+</div>
+
+<!-- ── MODAL REGISTRO TURNO ── -->
+<div class="reg-modal" id="modal-reg" onclick="if(event.target===this)cerrarModal('modal-reg')">
+  <div class="reg-sheet">
+    <div class="modal-handle"></div>
+    <div class="reg-est-header">
+      <div class="reg-avatar" id="reg-avatar">AB</div>
+      <div>
+        <div class="reg-est-name" id="reg-nombre">Nombre</div>
+        <div class="reg-est-sub" id="reg-sub">Grado · Período</div>
+      </div>
+    </div>
+    <div class="nota-grande">
+      <div><span class="nota-val" id="reg-nota">0.0</span><span class="nota-max">/10.0</span></div>
+      <div class="nota-lbl">Nota actual</div>
+      <div class="nota-barra"><div class="nota-barra-fill" id="reg-barra" style="width:0%"></div></div>
+    </div>
+    <div class="section-title" style="margin-bottom:10px;">Toca un turno para registrar asistencia</div>
+    <div class="turnos-grid" id="turnos-grid"></div>
+    <div class="fecha-picker" id="fecha-picker">
+      <label>Fecha de la supervisión</label>
+      <input type="date" id="fecha-input">
+    </div>
+    <button class="btn-guardar-turno" id="btn-guardar-turno" onclick="guardarTurno()" style="display:none;">✅ Confirmar asistencia</button>
+    <button class="btn-quitar-turno" id="btn-quitar-turno" onclick="quitarTurno()">✕ Quitar este turno</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// CONFIGURACIÓN Y ESTADO GLOBAL
+// ═══════════════════════════════════════════════════
+let supabase_client = null;
+let config = {
+  periodos: [
+    { id: 1, nombre: "Primer Período",  inicio: "2026-02-03", fin: "2026-04-10" },
+    { id: 2, nombre: "Segundo Período", inicio: "2026-04-20", fin: "2026-06-26" },
+    { id: 3, nombre: "Tercer Período",  inicio: "2026-07-13", fin: "2026-09-18" },
+    { id: 4, nombre: "Cuarto Período",  inicio: "2026-09-28", fin: "2026-11-27" }
+  ],
+  turnos: { "901": 5, "902": 5, "903": 5 }
+};
+let periodoActivo = 2;
+let estudiantes = [];
+let registros = [];
+let filtroReporte = "todos";
+let filtroAdmin = "todos";
+let estSeleccionado = null;
+let turnoSeleccionado = null;
+let cursosAbiertos = {};
+
+// ═══════════════════════════════════════════════════
+// SETUP Y CONEXIÓN SUPABASE
+// ═══════════════════════════════════════════════════
+async function conectarSupabase() {
+  let url = document.getElementById("sb-url").value.trim();
+  const key = document.getElementById("sb-key").value.trim();
+  if (!url || !key) { toast("⚠️ Completa los dos campos"); return; }
+  url = url.replace(//rest/v1/?$/, "").replace(//+$/, "");
+  if (!url.startsWith("https://")) { toast("⚠️ La URL debe empezar con https://"); return; }
+  const btn = document.querySelector(".btn-setup");
+  btn.textContent = "Conectando...";
+  btn.disabled = true;
+  try {
+    supabase_client = window.supabase.createClient(url, key);
+    const { data, error } = await supabase_client.from("estudiantes").select("id").limit(1);
+    if (error) throw new Error(error.message);
+    localStorage.setItem("vigias_sb_url", url);
+    localStorage.setItem("vigias_sb_key", key);
+    await iniciarApp();
+  } catch(e) {
+    console.error("Conexion fallida:", e);
+    let msg = "Error de conexion. Verifica URL y clave.";
+    if (e.message && e.message.includes("relation")) msg = "Tablas no encontradas. Ejecutaste el SQL?";
+    toast("❌ " + msg);
+    btn.textContent = "🔗 Conectar y entrar";
+    btn.disabled = false;
+  }
+}
+
+async function iniciarApp() {
+  document.getElementById("setup-screen").style.display = "none";
+  document.getElementById("app").classList.add("visible");
+  await cargarConfig();
+  await cargarDatos();
+  renderHeader();
+  renderSeguimiento();
+  renderAdmin();
+}
+
+// ═══════════════════════════════════════════════════
+// CONFIGURACIÓN PERSISTENTE
+// ═══════════════════════════════════════════════════
+async function cargarConfig() {
+  try {
+    const { data } = await supabase_client.from("config").select("*");
+    if (data && data.length > 0) {
+      data.forEach(row => {
+        if (row.clave === "periodos") config.periodos = JSON.parse(row.valor);
+        if (row.clave === "turnos") config.turnos = JSON.parse(row.valor);
+        if (row.clave === "periodo_activo") periodoActivo = parseInt(row.valor);
+      });
+    }
+  } catch(e) { console.log("Config defaults used"); }
+}
+
+async function guardarConfigDB(clave, valor) {
+  await supabase_client.from("config").upsert({ clave, valor: JSON.stringify(valor) }, { onConflict: "clave" });
+}
+
+// ═══════════════════════════════════════════════════
+// CARGA DE DATOS
+// ═══════════════════════════════════════════════════
+async function cargarDatos() {
+  const [estRes, regRes] = await Promise.all([
+    supabase_client.from("estudiantes").select("*").order("grado").order("nombre"),
+    supabase_client.from("registros").select("*").eq("periodo", periodoActivo)
+  ]);
+  estudiantes = estRes.data || [];
+  registros = regRes.data || [];
+}
+
+// ═══════════════════════════════════════════════════
+// NAVEGACIÓN Y UI
+// ═══════════════════════════════════════════════════
+function showTab(id, btn) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("tab-" + id).classList.add("active");
+  if (btn) btn.classList.add("active");
+  if (id === "hoy") renderSeguimiento();
+  if (id === "reporte") renderReporte();
+  if (id === "admin") renderAdmin();
+}
+
+function renderHeader() {
+  const p = config.periodos.find(p => p.id === periodoActivo);
+  if (p) document.getElementById("btn-periodo").textContent = p.nombre.replace("Período","P.") + " ▾";
+}
+
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove("show"), 2500);
+}
+
+function abrirPeriodos() {
+  const list = document.getElementById("periodos-list");
+  list.innerHTML = config.periodos.map(p => {
+    const hoy = new Date().toISOString().slice(0,10);
+    const status = hoy < p.inicio ? "futuro" : hoy > p.fin ? "pasado" : "activo";
+    const labels = { futuro: "Próximo", pasado: "Finalizado", activo: "En curso" };
+    return `<button class="periodo-option ${p.id===periodoActivo?'active':''}" onclick="cambiarPeriodo(${p.id})">
+      <div class="periodo-num">${p.id}</div>
+      <div class="periodo-info">
+        <div class="pi-name">${p.nombre}</div>
+        <div class="pi-dates">📅 ${formatFecha(p.inicio)} → ${formatFecha(p.fin)}</div>
+        <span class="pi-status status-${status}">${labels[status]}</span>
+      </div>
+    </button>`;
+  }).join("");
+  document.getElementById("modal-periodos").classList.add("open");
+}
+
+async function cambiarPeriodo(id) {
+  periodoActivo = id;
+  cerrarModal("modal-periodos");
+  await guardarConfigDB("periodo_activo", id);
+  toast("⏳ Cargando período...");
+  const { data } = await supabase_client.from("registros").select("*").eq("periodo", periodoActivo);
+  registros = data || [];
+  renderHeader();
+  renderSeguimiento();
+}
+
+function cerrarModal(id) {
+  document.getElementById(id).classList.remove("open");
+}
+
+function formatFecha(iso) {
+  if (!iso) return "—";
+  const [y,m,d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function initials(nombre) {
+  const p = nombre.split(" ");
+  return (p[0]?.[0] || "") + (p[1]?.[0] || "");
+}
+
+// ═══════════════════════════════════════════════════
+// TAB SEGUIMIENTO
+// ═══════════════════════════════════════════════════
+function calcNota(estId, grado) {
+  const maxTurnos = config.turnos[grado] || 5;
+  const cumplidos = registros.filter(r => r.estudiante_id === estId).length;
+  const nota = maxTurnos > 0 ? Math.min((cumplidos / maxTurnos) * 10, 10) : 0;
+  return { cumplidos, maxTurnos, nota: Math.round(nota * 10) / 10 };
+}
+
+function renderSeguimiento() {
+  const grados = ["901", "902", "903"];
+  let totalAsist = 0, totalAsig = 0, sumaNotas = 0, countEst = 0;
+
+  estudiantes.forEach(e => {
+    const { cumplidos, maxTurnos, nota } = calcNota(e.id, e.grado);
+    totalAsist += cumplidos;
+    totalAsig += maxTurnos;
+    sumaNotas += nota;
+    countEst++;
+  });
+
+  const pct = totalAsig > 0 ? Math.round((totalAsist / totalAsig) * 100) : 0;
+  const prom = countEst > 0 ? (sumaNotas / countEst).toFixed(1) : "—";
+
+  document.getElementById("s-total").textContent = totalAsist;
+  document.getElementById("s-pct").textContent = pct + "%";
+  document.getElementById("s-prom").textContent = prom;
+
+  const cont = document.getElementById("cursos-list");
+  if (estudiantes.length === 0) {
+    cont.innerHTML = `<div class="empty"><div class="empty-icon">👥</div><p>No hay estudiantes registrados.<br>Ve a Administrar para agregarlos.</p></div>`;
+    return;
+  }
+
+  cont.innerHTML = grados.map(g => {
+    const ests = estudiantes.filter(e => e.grado === g);
+    if (ests.length === 0) return "";
+
+    let sumPct = 0;
+    ests.forEach(e => {
+      const { cumplidos, maxTurnos } = calcNota(e.id, g);
+      sumPct += maxTurnos > 0 ? cumplidos / maxTurnos : 0;
+    });
+    const cursoPct = Math.round((sumPct / ests.length) * 100);
+    const isOpen = cursosAbiertos[g] !== false;
+
+    return `<div class="curso-card">
+      <div class="curso-header" onclick="toggleCurso('${g}')">
+        <div class="curso-badge">${g}</div>
+        <div class="curso-info">
+          <div class="curso-name">Grado ${g}</div>
+          <div class="curso-meta">${ests.length} estudiantes · ${config.turnos[g]||5} turnos c/u</div>
+        </div>
+        <div class="curso-progress">
+          <div class="curso-pct">${cursoPct}%</div>
+          <div class="curso-pct-lbl">completado</div>
+        </div>
+      </div>
+      <div class="curso-bar"><div class="curso-bar-fill" style="width:${cursoPct}%"></div></div>
+      <div class="curso-body ${isOpen?'open':''}" id="body-${g}">
+        ${ests.map(e => renderEstRow(e)).join("")}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function renderEstRow(e) {
+  const { cumplidos, maxTurnos, nota } = calcNota(e.id, e.grado);
+  const pct = maxTurnos > 0 ? Math.round((cumplidos / maxTurnos) * 100) : 0;
+  const cls = nota >= 7 ? "alta" : nota >= 6 ? "media" : "baja";
+  return `<div class="est-row">
+    <div class="est-avatar">${initials(e.nombre)}</div>
+    <div class="est-info">
+      <div class="est-name">${e.nombre}</div>
+      <div class="est-turnos">${cumplidos}/${maxTurnos} turnos cumplidos</div>
+    </div>
+    <div class="mini-bar">
+      <div class="mini-bar-bg"><div class="mini-bar-fill mf-${cls}" style="width:${pct}%"></div></div>
+    </div>
+    <div class="mini-nota mn-${cls}">${nota.toFixed(1)}</div>
+    <button class="btn-icon" onclick="abrirRegistro('${e.id}')" title="Registrar turno">📝</button>
+  </div>`;
+}
+
+function toggleCurso(g) {
+  cursosAbiertos[g] = cursosAbiertos[g] === false ? true : false;
+  const body = document.getElementById("body-" + g);
+  if (body) body.classList.toggle("open", cursosAbiertos[g] !== false);
+}
+
+// ═══════════════════════════════════════════════════
+// MODAL REGISTRO DE TURNO
+// ═══════════════════════════════════════════════════
+function abrirRegistro(estId) {
+  const est = estudiantes.find(e => e.id === estId);
+  if (!est) return;
+  estSeleccionado = est;
+  turnoSeleccionado = null;
+
+  const periodo = config.periodos.find(p => p.id === periodoActivo);
+  document.getElementById("reg-avatar").textContent = initials(est.nombre);
+  document.getElementById("reg-nombre").textContent = est.nombre;
+  document.getElementById("reg-sub").textContent = `Grado ${est.grado} · ${periodo?.nombre || ""}`;
+
+  actualizarModalNota();
+  document.getElementById("modal-reg").classList.add("open");
+  document.getElementById("fecha-input").value = new Date().toISOString().slice(0, 10);
+}
+
+function actualizarModalNota() {
+  const est = estSeleccionado;
+  const { cumplidos, maxTurnos, nota } = calcNota(est.id, est.grado);
+
+  document.getElementById("reg-nota").textContent = nota.toFixed(1);
+  document.getElementById("reg-barra").style.width = Math.min((nota / 10) * 100, 100) + "%";
+
+  const regsEst = registros.filter(r => r.estudiante_id === est.id);
+  const grid = document.getElementById("turnos-grid");
+  grid.style.gridTemplateColumns = `repeat(${maxTurnos}, 1fr)`;
+
+  grid.innerHTML = Array.from({ length: maxTurnos }, (_, i) => {
+    const t = i + 1;
+    const reg = regsEst.find(r => r.turno === t);
+    const clase = reg ? "cumplido" : (turnoSeleccionado === t ? "seleccionado" : "");
+    const fecha = reg ? formatFecha(reg.fecha) : "";
+    return `<button class="turno-btn ${clase}" onclick="seleccionarTurno(${t})">
+      <span class="t-num">${t}</span>
+      <span class="t-lbl">${reg ? "✓" : ""}${fecha ? `<br>${fecha}` : "Turno<br>${t}"}</span>
+    </button>`;
+  }).join("");
+
+  // Reset botones
+  document.getElementById("btn-guardar-turno").style.display = "none";
+  document.getElementById("fecha-picker").classList.remove("visible");
+  document.getElementById("btn-quitar-turno").classList.remove("visible");
+  turnoSeleccionado = null;
+}
+
+function seleccionarTurno(t) {
+  const est = estSeleccionado;
+  const regsEst = registros.filter(r => r.estudiante_id === est.id);
+  const reg = regsEst.find(r => r.turno === t);
+
+  turnoSeleccionado = t;
+
+  // Redibujar grid
+  const { maxTurnos } = calcNota(est.id, est.grado);
+  const grid = document.getElementById("turnos-grid");
+  grid.querySelectorAll(".turno-btn").forEach((btn, i) => {
+    const tNum = i + 1;
+    const r = regsEst.find(r => r.turno === tNum);
+    btn.className = "turno-btn" + (r ? " cumplido" : tNum === t ? " seleccionado" : "");
+  });
+
+  if (reg) {
+    // Ya tiene registro — mostrar opción de quitar
+    document.getElementById("btn-guardar-turno").style.display = "none";
+    document.getElementById("fecha-picker").classList.remove("visible");
+    document.getElementById("btn-quitar-turno").classList.add("visible");
+  } else {
+    // No tiene — mostrar fecha y guardar
+    document.getElementById("fecha-picker").classList.add("visible");
+    document.getElementById("btn-guardar-turno").style.display = "block";
+    document.getElementById("btn-quitar-turno").classList.remove("visible");
+  }
+}
+
+async function guardarTurno() {
+  if (!turnoSeleccionado || !estSeleccionado) return;
+  const fecha = document.getElementById("fecha-input").value;
+  if (!fecha) { toast("⚠️ Selecciona la fecha"); return; }
+
+  const btn = document.getElementById("btn-guardar-turno");
+  btn.textContent = "Guardando...";
+  btn.disabled = true;
+
+  try {
+    const { data, error } = await supabase_client.from("registros").insert({
+      estudiante_id: estSeleccionado.id,
+      periodo: periodoActivo,
+      turno: turnoSeleccionado,
+      fecha: fecha,
+      grado: estSeleccionado.grado
+    }).select().single();
+
+    if (error) throw error;
+    registros.push(data);
+    toast("✅ ¡Asistencia registrada!");
+    actualizarModalNota();
+    renderSeguimiento();
+  } catch(e) {
+    console.error(e);
+    toast("❌ Error al guardar. Verifica la conexión.");
+  }
+  btn.textContent = "✅ Confirmar asistencia";
+  btn.disabled = false;
+}
+
+async function quitarTurno() {
+  if (!turnoSeleccionado || !estSeleccionado) return;
+  if (!confirm("¿Quitar el registro de este turno?")) return;
+
+  const reg = registros.find(r => r.estudiante_id === estSeleccionado.id && r.turno === turnoSeleccionado && r.periodo === periodoActivo);
+  if (!reg) return;
+
+  try {
+    await supabase_client.from("registros").delete().eq("id", reg.id);
+    registros = registros.filter(r => r.id !== reg.id);
+    toast("Registro eliminado");
+    actualizarModalNota();
+    renderSeguimiento();
+  } catch(e) {
+    toast("❌ Error al eliminar");
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// TAB REPORTE
+// ═══════════════════════════════════════════════════
+function setFR(g, btn) {
+  filtroReporte = g;
+  document.querySelectorAll("#filtro-rep .fpill").forEach(p => p.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  renderReporte();
+}
+
+function getRowsReporte() {
+  const ests = filtroReporte === "todos" ? estudiantes : estudiantes.filter(e => e.grado === filtroReporte);
+  return ests.map(e => {
+    const { cumplidos, maxTurnos, nota } = calcNota(e.id, e.grado);
+    const estado = nota >= 6 ? "Aprobado" : "Reprobado";
+    return { ...e, cumplidos, maxTurnos, nota, estado };
+  }).sort((a, b) => a.grado.localeCompare(b.grado) || a.nombre.localeCompare(b.nombre));
+}
+
+function renderReporte() {
+  const rows = getRowsReporte();
+  const aprobados = rows.filter(r => r.estado === "Aprobado").length;
+  const reprobados = rows.length - aprobados;
+  const prom = rows.length ? (rows.reduce((s, r) => s + r.nota, 0) / rows.length).toFixed(1) : "—";
+
+  document.getElementById("rep-stats-row").innerHTML = `
+    <div class="stat-card"><div class="stat-val sv-verde">${aprobados}</div><div class="stat-lbl">Aprobados</div></div>
+    <div class="stat-card"><div class="stat-val sv-rojo">${reprobados}</div><div class="stat-lbl">Reprobados</div></div>
+    <div class="stat-card"><div class="stat-val">${prom}</div><div class="stat-lbl">Promedio</div></div>
+  `;
+
+  const periodo = config.periodos.find(p => p.id === periodoActivo);
+  document.getElementById("print-header").innerHTML = `
+    <h2>🌿 Vigías Ambientales — Reporte de Calificaciones</h2>
+    <p>${periodo?.nombre || ""} · Biología Grado 9° · Generado: ${new Date().toLocaleDateString("es-CO")}</p>
+  `;
+
+  if (!rows.length) {
+    document.getElementById("rep-table").innerHTML = `<div class="empty"><div class="empty-icon">📊</div><p>Sin datos para este período.</p></div>`;
+    return;
+  }
+
+  const clsN = n => n >= 7 ? "mn-alta" : n >= 6 ? "mn-media" : "mn-baja";
+
+  document.getElementById("rep-table").innerHTML = `
+    <div class="rep-thead">
+      <span>#</span><span>Estudiante</span><span style="text-align:center">Grado</span><span style="text-align:center">Nota</span><span style="text-align:center">Estado</span>
+    </div>
+    ${rows.map((r, i) => `
+    <div class="rep-row">
+      <span class="rep-num">${i + 1}</span>
+      <span class="rep-nombre" title="${r.nombre}">${r.nombre}</span>
+      <span style="text-align:center;font-size:12px;color:var(--txt2)">${r.grado}</span>
+      <span class="rep-nota-cell ${clsN(r.nota)}">${r.nota.toFixed(1)}</span>
+      <span style="text-align:center"><span class="badge ${r.estado==='Aprobado'?'badge-ok':'badge-no'}">${r.estado}</span></span>
+    </div>`).join("")}
+  `;
+}
+
+function imprimirReporte() { renderReporte(); setTimeout(() => window.print(), 150); }
+
+function exportarCSV() {
+  const rows = getRowsReporte();
+  if (!rows.length) { toast("⚠️ Sin datos para exportar"); return; }
+  const periodo = config.periodos.find(p => p.id === periodoActivo);
+  let csv = "\uFEFF";
+  csv += `Vigías Ambientales - ${periodo?.nombre || ""}\n`;
+  csv += `N°,Nombre,Grado,Turnos cumplidos,Turnos totales,Nota (0-10),Estado\n`;
+  rows.forEach((r, i) => {
+    csv += `${i+1},"${r.nombre}",${r.grado},${r.cumplidos},${r.maxTurnos},${r.nota.toFixed(1)},${r.estado}\n`;
+  });
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `vigias_p${periodoActivo}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast("✅ Archivo descargado");
+}
+
+// ═══════════════════════════════════════════════════
+// TAB ADMIN
+// ═══════════════════════════════════════════════════
+function setFA(g, btn) {
+  filtroAdmin = g;
+  document.querySelectorAll("#filtro-admin .fpill").forEach(p => p.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  renderAdminLista();
+}
+
+function renderAdmin() {
+  renderPeriodosConfig();
+  renderTurnosConfig();
+  renderAdminLista();
+}
+
+function renderPeriodosConfig() {
+  document.getElementById("periodos-config").innerHTML = config.periodos.map((p, i) => `
+    <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;align-items:center;margin-bottom:10px;">
+      <span style="font-size:13px;font-weight:700;color:var(--verde-dark);min-width:24px">P${p.id}</span>
+      <div>
+        <div style="font-size:10px;color:var(--txt3);margin-bottom:3px;">INICIO</div>
+        <input type="date" value="${p.inicio}" onchange="config.periodos[${i}].inicio=this.value;guardarConfigDB('periodos',config.periodos)"
+          style="width:100%;padding:7px;border:1.5px solid var(--gris-borde);border-radius:8px;font-size:13px;font-family:inherit;">
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--txt3);margin-bottom:3px;">FIN</div>
+        <input type="date" value="${p.fin}" onchange="config.periodos[${i}].fin=this.value;guardarConfigDB('periodos',config.periodos)"
+          style="width:100%;padding:7px;border:1.5px solid var(--gris-borde);border-radius:8px;font-size:13px;font-family:inherit;">
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderTurnosConfig() {
+  const grados = ["901", "902", "903"];
+  document.getElementById("turnos-config").innerHTML = grados.map(g => `
+    <div class="turno-config">
+      <span class="turno-config-name">Grado ${g}</span>
+      <div class="turno-config-num">
+        <button onclick="cambiarTurnos('${g}',-1)">−</button>
+        <span id="tc-${g}">${config.turnos[g] || 5}</span>
+        <button onclick="cambiarTurnos('${g}',1)">+</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function cambiarTurnos(g, delta) {
+  const actual = config.turnos[g] || 5;
+  config.turnos[g] = Math.max(1, Math.min(10, actual + delta));
+  document.getElementById("tc-" + g).textContent = config.turnos[g];
+}
+
+async function guardarConfigTurnos() {
+  await guardarConfigDB("turnos", config.turnos);
+  toast("✅ Turnos actualizados");
+  renderSeguimiento();
+}
+
+async function agregarEstudiante() {
+  const nombre = document.getElementById("nuevo-nombre").value.trim().toUpperCase();
+  const grado = document.getElementById("nuevo-grado").value;
+  if (!nombre || nombre.length < 3) { toast("⚠️ Escribe el nombre completo"); return; }
+  if (estudiantes.some(e => e.nombre === nombre && e.grado === grado)) { toast("⚠️ Estudiante ya existe en este grado"); return; }
+
+  try {
+    const { data, error } = await supabase_client.from("estudiantes").insert({ nombre, grado }).select().single();
+    if (error) throw error;
+    estudiantes.push(data);
+    estudiantes.sort((a, b) => a.grado.localeCompare(b.grado) || a.nombre.localeCompare(b.nombre));
+    document.getElementById("nuevo-nombre").value = "";
+    toast("✅ Estudiante agregado");
+    renderAdminLista();
+    renderSeguimiento();
+  } catch(e) {
+    console.error(e);
+    toast("❌ Error al agregar estudiante");
+  }
+}
+
+function renderAdminLista() {
+  const lista = filtroAdmin === "todos" ? estudiantes : estudiantes.filter(e => e.grado === filtroAdmin);
+  const cont = document.getElementById("admin-est-list");
+  if (!lista.length) {
+    cont.innerHTML = `<div class="empty" style="padding:20px"><div class="empty-icon">👥</div><p>Sin estudiantes registrados.</p></div>`;
+    return;
+  }
+  cont.innerHTML = lista.map(e => `
+    <div class="est-admin-row">
+      <div class="est-avatar" style="width:32px;height:32px;font-size:11px;flex-shrink:0">${initials(e.nombre)}</div>
+      <div style="flex:1;min-width:0">
+        <div class="est-admin-name">${e.nombre}</div>
+        <div class="est-admin-grado">Grado ${e.grado}</div>
+      </div>
+      <button class="btn-del" onclick="eliminarEstudiante('${e.id}','${e.nombre.replace(/'/g,"\\'")}')">🗑️</button>
+    </div>
+  `).join("");
+}
+
+async function eliminarEstudiante(id, nombre) {
+  if (!confirm(`¿Eliminar a ${nombre}?\n\nSe borrarán todos sus registros de asistencia.`)) return;
+  try {
+    await supabase_client.from("registros").delete().eq("estudiante_id", id);
+    await supabase_client.from("estudiantes").delete().eq("id", id);
+    estudiantes = estudiantes.filter(e => e.id !== id);
+    registros = registros.filter(r => r.estudiante_id !== id);
+    toast("🗑️ Estudiante eliminado");
+    renderAdminLista();
+    renderSeguimiento();
+  } catch(e) {
+    toast("❌ Error al eliminar");
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// INIT — Credenciales fijas + auto-conectar
+// ═══════════════════════════════════════════════════
+const SUPABASE_URL = "https://nqohozfstpcsrtltlsja.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xb2hvemZzdHBjc3J0bHRsc2phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNzQzMTEsImV4cCI6MjA5OTk1MDMxMX0.5Z5RDqPg060yTv4xhdsbN8eRW--ZVU4EVmxTFosFOnU";
+
+(async function init() {
+  // 1. Intentar credenciales fijas primero
+  try {
+    supabase_client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const { error } = await supabase_client.from("estudiantes").select("id").limit(1);
+    if (!error) {
+      await iniciarApp();
+      return;
+    }
+  } catch(e) { console.log("Credenciales fijas fallaron, usando localStorage", e); }
+
+  // 2. Intentar localStorage
+  const url = localStorage.getItem("vigias_sb_url");
+  const key = localStorage.getItem("vigias_sb_key");
+  if (url && key) {
+    try {
+      supabase_client = window.supabase.createClient(url, key);
+      const { error } = await supabase_client.from("estudiantes").select("id").limit(1);
+      if (!error) {
+        await iniciarApp();
+        return;
+      }
+    } catch(e) {}
+  }
+
+  // 3. Mostrar pantalla de setup
+  document.getElementById("setup-screen").style.display = "flex";
+})();
+</script>
+</body>
+</html>
