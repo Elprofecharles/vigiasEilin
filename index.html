@@ -482,7 +482,7 @@ async function conectarSupabase() {
   let url = document.getElementById("sb-url").value.trim();
   const key = document.getElementById("sb-key").value.trim();
   if (!url || !key) { toast("⚠️ Completa los dos campos"); return; }
-  url = url.replace(//rest/v1/?$/, "").replace(//+$/, "");
+  url = url.replace(/\/rest\/v1\/?$/, "").replace(/\/+$/, "");
   if (!url.startsWith("https://")) { toast("⚠️ La URL debe empezar con https://"); return; }
   const btn = document.querySelector(".btn-setup");
   btn.textContent = "Conectando...";
@@ -1033,7 +1033,7 @@ async function eliminarEstudiante(id, nombre) {
 // INIT — Credenciales fijas + auto-conectar
 // ═══════════════════════════════════════════════════
 const SUPABASE_URL = "https://nqohozfstpcsrtltlsja.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5xb2hvemZzdHBjc3J0bHRsc2phIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNzQzMTEsImV4cCI6MjA5OTk1MDMxMX0.5Z5RDqPg060yTv4xhdsbN8eRW--ZVU4EVmxTFosFOnU";
+const SUPABASE_KEY = "sb_publishable_VtBXRKS0P0qRooOnQzMvew_j-OCyXwg";
 
 (async function init() {
   // 1. Intentar credenciales fijas primero
